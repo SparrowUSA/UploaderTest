@@ -1,26 +1,41 @@
 import os
 import asyncio
+import subprocess
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from playwright.async_api import async_playwright
 
-# Environment variables
+# -----------------------
+# Environment Variables
+# -----------------------
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 RUMBLE_USERNAME = os.environ.get("RUMBLE_USERNAME")
 RUMBLE_PASSWORD = os.environ.get("RUMBLE_PASSWORD")
 
 if not TELEGRAM_BOT_TOKEN or not RUMBLE_USERNAME or not RUMBLE_PASSWORD:
-    raise Exception("One or more environment variables are missing!")
+    raise Exception("Please set TELEGRAM_BOT_TOKEN, RUMBLE_USERNAME, RUMBLE_PASSWORD in Railway variables!")
 
+# -----------------------
+# Ensure Playwright browsers are installed at runtime
+# -----------------------
+def ensure_browsers():
+    print("Ensuring Playwright browsers are installed...")
+    subprocess.run([os.sys.executable, "-m", "playwright", "install"], check=True)
+    print("Playwright browsers installation done.")
+
+# -----------------------
+# Upload to Rumble
+# -----------------------
 async def upload_to_rumble(file_path, title):
     print("Starting Playwright upload...")
+    ensure_browsers()  # make sure browsers exist
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
 
             # Login
-            print("Going to Rumble login page...")
+            print("Logging into Rumble...")
             await page.goto("https://rumble.com/login")
             await page.fill('input[name="username"]', RUMBLE_USERNAME)
             await page.fill('input[name="password"]', RUMBLE_PASSWORD)
@@ -36,15 +51,18 @@ async def upload_to_rumble(file_path, title):
             await page.click('button:has-text("Publish")')
             print("Upload started...")
 
-            # Wait for upload to complete (adjust timeout if needed)
+            # Wait for upload (adjust if videos are large)
             await page.wait_for_timeout(20000)
             print(f"Upload finished: {file_path}")
 
             await browser.close()
     except Exception as e:
         print("Playwright upload error:", e)
-        raise e  # re-raise to handle in main handler
+        raise e
 
+# -----------------------
+# Telegram Handler
+# -----------------------
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         file_id = update.message.video.file_id
@@ -56,7 +74,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await file.download_to_drive(local_filename)
         print(f"Downloaded video: {local_filename}")
 
-        # Reply immediately after download
+        # Reply immediately
         try:
             await update.message.reply_text("Video received! Uploading to Rumble...")
         except Exception as e:
@@ -82,8 +100,11 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as te:
             print("Telegram error reply failed:", te)
 
-# Build and run the bot
+# -----------------------
+# Build and Run Bot
+# -----------------------
 app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 app.add_handler(MessageHandler(filters.VIDEO, handle_video))
 print("Bot started listening...")
 app.run_polling()
+
