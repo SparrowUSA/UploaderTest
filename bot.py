@@ -7,11 +7,9 @@ GITHUB_REPO = "SparrowUSA/UploaderTest"
 GITHUB_TOKEN = os.environ["MY_GITHUB_TOKEN"]
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 
-# Handle incoming video messages
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_id = update.message.video.file_id
-
-    # Trigger GitHub workflow
+    # Trigger GitHub Actions workflow
     requests.post(
         f"https://api.github.com/repos/{GITHUB_REPO}/dispatches",
         headers={
@@ -25,9 +23,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text("Video received! Uploading to Rumble...")
 
-# Build bot
+# Build and run the bot
 app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 app.add_handler(MessageHandler(filters.VIDEO, handle_video))
-
-# Start polling
 app.run_polling()
