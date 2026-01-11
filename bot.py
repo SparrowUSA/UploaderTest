@@ -1,6 +1,6 @@
 import os
-import asyncio
 import subprocess
+import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from playwright.async_api import async_playwright
@@ -13,7 +13,7 @@ RUMBLE_USERNAME = os.environ.get("RUMBLE_USERNAME")
 RUMBLE_PASSWORD = os.environ.get("RUMBLE_PASSWORD")
 
 if not TELEGRAM_BOT_TOKEN or not RUMBLE_USERNAME or not RUMBLE_PASSWORD:
-    raise Exception("Please set TELEGRAM_BOT_TOKEN, RUMBLE_USERNAME, RUMBLE_PASSWORD in Railway variables!")
+    raise Exception("Set TELEGRAM_BOT_TOKEN, RUMBLE_USERNAME, RUMBLE_PASSWORD in Railway variables!")
 
 # -----------------------
 # Ensure Playwright browsers are installed at runtime
@@ -28,7 +28,7 @@ def ensure_browsers():
 # -----------------------
 async def upload_to_rumble(file_path, title):
     print("Starting Playwright upload...")
-    ensure_browsers()  # make sure browsers exist
+    ensure_browsers()
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -51,7 +51,7 @@ async def upload_to_rumble(file_path, title):
             await page.click('button:has-text("Publish")')
             print("Upload started...")
 
-            # Wait for upload (adjust if videos are large)
+            # Wait for upload (adjust timeout for large videos)
             await page.wait_for_timeout(20000)
             print(f"Upload finished: {file_path}")
 
@@ -107,4 +107,3 @@ app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 app.add_handler(MessageHandler(filters.VIDEO, handle_video))
 print("Bot started listening...")
 app.run_polling()
-
