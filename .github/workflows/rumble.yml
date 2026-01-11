@@ -1,0 +1,34 @@
+name: Telegram to Rumble Auto Upload
+
+on:
+  repository_dispatch:
+    types: [telegram_video_received]
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install python-telegram-bot playwright requests
+        playwright install chromium
+
+    - name: Download video
+      run: python download.py
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_FILE_ID: ${{ github.event.client_payload.file_id }}
+
+    - name: Upload to Rumble
+      run: python rumble_upload.py
+      env:
+        RUMBLE_EMAIL: ${{ secrets.RUMBLE_EMAIL }}
+        RUMBLE_PASSWORD: ${{ secrets.RUMBLE_PASSWORD }}
+        VIDEO_PATH: video.mp4
