@@ -1,17 +1,19 @@
 import os
 import requests
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from telegram.ext import Updater, MessageHandler, Filters
 
 # Your GitHub repo
 GITHUB_REPO = "SparrowUSA/UploaderTest"
+
+# Get tokens from Railway environment variables
 GITHUB_TOKEN = os.environ["MY_GITHUB_TOKEN"]
+TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 
 # Function to handle incoming video messages
-async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def handle_video(update, context):
     file_id = update.message.video.file_id
 
-    # Send file_id to GitHub to trigger workflow
+    # Trigger GitHub Actions workflow
     requests.post(
         f"https://api.github.com/repos/{GITHUB_REPO}/dispatches",
         headers={
@@ -23,11 +25,18 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "client_payload": {"file_id": file_id},
         },
     )
-    await update.message.reply_text("Video received! Uploading to Rumble...")
 
-# Build the bot and add handler
-app = ApplicationBuilder().token(os.environ["TELEGRAM_BOT_TOKEN"]).build()
-app.add_handler(MessageHandler(filters.VIDEO, handle_video))
+    # Reply to user
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Video received! Uploading to Rumble..."
+    )
+
+# Set up the bot
+updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
+dispatcher = updater.dispatcher
+dispatcher.add_handler(MessageHandler(Filters.video, handle_video))
 
 # Start the bot
-app.run_polling()
+updater.start_polling()
+updater.idle()
